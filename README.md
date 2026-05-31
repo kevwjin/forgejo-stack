@@ -14,10 +14,10 @@ Quick start
 - For SSH testing, use port 2222: `git clone ssh://git@localhost:2222/<owner>/<repo>.git`
 
 Keep it running
-- Install the systemd unit: `sudo install -m 0644 systemd/forgejo-stack.service /etc/systemd/system/forgejo-stack.service`
-- Enable and start it: `sudo systemctl daemon-reload && sudo systemctl enable --now forgejo-stack.service`
+- Install or repair the systemd unit: `./scripts/install-systemd.sh`
 - Check it: `systemctl status forgejo-stack.service --no-pager`
 - systemd runs Docker Compose directly from this directory. It uses Compose's normal `.env` loading, not direnv.
+- The install script also disables and removes the old `gitea-stack.service` unit if it exists.
 
 Developer environment
 - `.envrc` enters the Nix flake dev shell, loads `.env` if present, and validates required variables.
