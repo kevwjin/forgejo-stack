@@ -1,0 +1,35 @@
+{
+  auto_https off
+}
+
+:80 {
+  route {
+    # 1) Let the gate itself be reachable at "/" (GET + POST) so login works.
+    @gate path /auth /healthz
+    handle @gate {
+      reverse_proxy auth-gate:4000 {
+        header_up X-Forwarded-Proto https
+        header_up X-Forwarded-Host {host}
+        header_up Host {host}
+      }
+    }
+
+    # 2) Everything else requires auth.
+    handle {
+      forward_auth auth-gate:4000 {
+        uri /?return_to={uri}
+        header_up Cookie {http.request.header.Cookie}
+        header_up X-Forwarded-Proto https
+        header_up X-Forwarded-Host {host}
+        header_up Host {host}
+      }
+
+      # 3) If authorized, proxy to Forgejo.
+      reverse_proxy forgejo:3000 {
+        header_up X-Forwarded-Proto https
+        header_up X-Forwarded-Host {host}
+        header_up Host {host}
+      }
+    }
+  }
+}

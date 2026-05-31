@@ -1,0 +1,95 @@
+name: gitea-stack
+
+services:
+  db:
+    image: postgres:17.7-alpine
+    environment:
+      POSTGRES_DB: forgejo
+      POSTGRES_USER: forgejo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - forgejo-db-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U forgejo -d forgejo"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:15.0.2
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Optional but useful (esp. on Linux) to avoid permission issues on mounted volumes:
+      USER_UID: ${USER_UID:-1000}
+      USER_GID: ${USER_GID:-1000}
+
+      FORGEJO__database__DB_TYPE: postgres
+      FORGEJO__database__HOST: db:5432
+      FORGEJO__database__NAME: forgejo
+      FORGEJO__database__USER: forgejo
+      FORGEJO__database__PASSWD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+
+      # If you're using Caddy in front, set these to your external URL/domain:
+      FORGEJO__server__ROOT_URL: https://${FORGEJO_DOMAIN:?FORGEJO_DOMAIN is required}/
+      FORGEJO__server__DOMAIN: ${FORGEJO_DOMAIN:?FORGEJO_DOMAIN is required}
+
+      FORGEJO__server__HTTP_PORT: 3000
+      FORGEJO__server__PROXY_HEADERS: X-Forwarded-For, X-Forwarded-Host, X-Forwarded-Proto
+      FORGEJO__server__SSH_LISTEN_PORT: 2222
+      FORGEJO__server__SSH_PORT: 2222
+      FORGEJO__server__START_SSH_SERVER: "true"
+
+      # Lock down instance
+      FORGEJO__service__DISABLE_REGISTRATION: "true"
+      FORGEJO__service__SHOW_REGISTRATION_BUTTON: "false"
+      FORGEJO__repository__DEFAULT_PRIVATE: "true"
+      FORGEJO__repository__ENABLE_PUSH_CREATE_USER: "true"
+      FORGEJO__security__INSTALL_LOCK: "true"
+      FORGEJO____APP_NAME: "Forgejo"
+
+      # Secrets: generate once and keep stable (do NOT leave placeholders)
+      FORGEJO__security__SECRET_KEY: ${FORGEJO_SECRET_KEY:?FORGEJO_SECRET_KEY is required}
+      FORGEJO__security__INTERNAL_TOKEN: ${FORGEJO_INTERNAL_TOKEN:?FORGEJO_INTERNAL_TOKEN is required}
+
+      FORGEJO__log__MODE: console
+    volumes:
+      - forgejo-data:/data
+    ports:
+      - "127.0.0.1:3000:3000" # Local-only access for SSH tunnels; Caddy remains the public web entrypoint.
+      - "2222:2222" # SSH (keep this if you want git@ over SSH)  <-- CHANGE if 2222 conflicts
+    restart: unless-stopped
+
+  auth-gate:
+    image: node:18-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      ACCESS_CODE: ${ACCESS_CODE:?ACCESS_CODE is required}
+      COOKIE_SECRET: ${COOKIE_SECRET:?COOKIE_SECRET is required}
+      PORT: 4000
+    command: sh -c "npm install && node auth-gate.js"
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2.11-alpine # UPDATED
+    depends_on:
+      - forgejo
+      - auth-gate
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro # <-- CHANGE if your Caddyfile is elsewhere
+      - caddy-data:/data     # persist certs/state (recommended for HTTPS)
+      - caddy-config:/config
+    ports:
+      - "80:80"
+      # - "443:443" # Uncomment when adding HTTPS block in Caddyfile for git.domain.com
+    restart: unless-stopped
+
+volumes:
+  forgejo-db-data:
+  forgejo-data:
+  caddy-data:
+  caddy-config:
