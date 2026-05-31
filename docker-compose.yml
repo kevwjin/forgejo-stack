@@ -1,4 +1,4 @@
-name: gitea-stack
+name: forgejo-stack
 
 services:
   db:

@@ -1,2 +1,6 @@
 .env
+.env.local
+.direnv/
 node_modules/
+result
+secrets.env
