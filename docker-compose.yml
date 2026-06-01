@@ -35,6 +35,7 @@ services:
       # If you're using Caddy in front, set these to your external URL/domain:
       FORGEJO__server__ROOT_URL: https://${FORGEJO_DOMAIN:?FORGEJO_DOMAIN is required}/
       FORGEJO__server__DOMAIN: ${FORGEJO_DOMAIN:?FORGEJO_DOMAIN is required}
+      FORGEJO__server__SSH_DOMAIN: ${FORGEJO_DOMAIN:?FORGEJO_DOMAIN is required}
 
       FORGEJO__server__HTTP_PORT: 3000
       FORGEJO__server__PROXY_HEADERS: X-Forwarded-For, X-Forwarded-Host, X-Forwarded-Proto
@@ -59,7 +60,7 @@ services:
       - forgejo-data:/data
     ports:
       - "127.0.0.1:3000:3000" # Local-only access for SSH tunnels; Caddy remains the public web entrypoint.
-      - "2222:2222" # SSH (keep this if you want git@ over SSH)  <-- CHANGE if 2222 conflicts
+      - "2222:2222" # Forgejo SSH bypasses Caddy/passcode; use ssh://git@${FORGEJO_DOMAIN}:2222/<owner>/<repo>.git.
     restart: unless-stopped
 
   auth-gate:
