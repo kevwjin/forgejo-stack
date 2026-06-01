@@ -11,8 +11,9 @@ Quick start
 - Open http://localhost and enter the `ACCESS_CODE` from `.env`.
 - Cloudflare Tunnel is configured separately in `~/.cloudflared/config.yml` to send `git.kevwjin.com` to `http://localhost:80`.
 - Start the tunnel with `cloudflared tunnel run gitea` if it is not already running.
-- For SSH Git operations, use port 2222: `git clone ssh://git@git.kevwjin.com:2222/<owner>/<repo>.git`
-- Caddy only handles HTTP traffic on port 80. Forgejo's built-in SSH server is exposed directly on host port 2222, so Git over SSH bypasses the web passcode.
+- For SSH Git operations, use port 2222: `git clone ssh://git@ssh.git.kevwjin.com:2222/<owner>/<repo>.git`
+- Caddy and Cloudflare Tunnel only handle HTTP traffic on port 80. Forgejo's built-in SSH server is exposed directly on host port 2222, so Git over SSH bypasses the web passcode.
+- Create a DNS-only record such as `ssh.git.kevwjin.com` pointing directly at the server, and set `FORGEJO_SSH_DOMAIN=ssh.git.kevwjin.com` in `.env`.
 
 Keep it running
 - Install or repair the systemd unit: `./scripts/install-systemd.sh`
